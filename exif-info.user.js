@@ -1,13 +1,14 @@
 // ==UserScript==
 // @name         EXIF Info
 // @namespace    https://x.com/anpho
-// @version      1.0
+// @version      1.1
 // @description  Displays EXIF information for images
 // @author       MerrickZ
 // @match        *://*/*
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
-// @connect      *
+// @grant        GM_notification
+// @connect      github.com
 // @updateURL    https://github.com/anpho/EXIFInfo_UserScript/raw/refs/heads/main/exif-info.user.js
 // @downloadURL  https://github.com/anpho/EXIFInfo_UserScript/raw/refs/heads/main/exif-info.user.js
 // @require      https://cdn.jsdelivr.net/npm/exif-js@2.3.0
@@ -15,6 +16,10 @@
 
 (function() {
     'use strict';
+
+    // Configuration constants
+    const MIN_THUMBNAIL_SIZE = 50;  // Skip processing for images smaller than this (in pixels)
+    const MIN_DISPLAY_SIZE = 100;   // Skip displaying EXIF info for images smaller than this (in pixels)
 
     // Inject styles using GM_addStyle for better performance
     GM_addStyle(`
@@ -153,7 +158,7 @@
     function getExifData(img) {
         return new Promise((resolve) => {
             // Skip small thumbnails and icons
-            if (img.width < 50 || img.height < 50) {
+            if (img.width < MIN_THUMBNAIL_SIZE || img.height < MIN_THUMBNAIL_SIZE) {
                 resolve({});
                 return;
             }
@@ -333,7 +338,7 @@
         for (let i = index; i < end; i++) {
             const img = images[i];
             // Skip very small images and already processed ones
-            if (img.width < 100 || img.height < 100 || img.dataset.exifProcessed) {
+            if (img.width < MIN_DISPLAY_SIZE || img.height < MIN_DISPLAY_SIZE || img.dataset.exifProcessed) {
                 continue;
             }
             processImage(img);
@@ -342,6 +347,36 @@
             setTimeout(() => processBatch(images, end, batchSize), 100);
         }
     }
+
+    // Version check function
+    function checkForUpdates() {
+        GM_xmlhttpRequest({
+            method: 'GET',
+            url: 'https://github.com/anpho/EXIFInfo_UserScript/raw/refs/heads/main/exif-info.user.js',
+            onload: function(response) {
+                const remoteScript = response.responseText;
+                const versionMatch = remoteScript.match(/@version\s+(\d+\.\d+)/);
+                if (versionMatch) {
+                    const remoteVersion = parseFloat(versionMatch[1]);
+                    const currentVersion = 1.0; // Make sure this matches your @version
+                    
+                    if (remoteVersion > currentVersion) {
+                        GM_notification({
+                            title: 'EXIF Info Update Available',
+                            text: `A new version (${remoteVersion}) is available. Click to update.`,
+                            onclick: function() {
+                                window.location.href = 'https://github.com/anpho/EXIFInfo_UserScript/raw/refs/heads/main/exif-info.user.js';
+                            }
+                        });
+                    }
+                }
+            }
+        });
+    }
+
+    // Check for updates when script starts and every 24 hours
+    checkForUpdates();
+    setInterval(checkForUpdates, 24 * 60 * 60 * 1000);
 
     // Initial processing with delay to ensure images are loaded
     setTimeout(() => {
@@ -354,12 +389,12 @@
         const newImages = [];
         mutations.forEach(mutation => {
             mutation.addedNodes.forEach(node => {
-                if (node.nodeName === 'IMG' && node.width >= 100 && node.height >= 100) {
+                if (node.nodeName === 'IMG' && node.width >= MIN_DISPLAY_SIZE && node.height >= MIN_DISPLAY_SIZE) {
                     newImages.push(node);
                 }
                 if (node.getElementsByTagName) {
                     const imgs = Array.from(node.getElementsByTagName('img'))
-                        .filter(img => img.width >= 100 && img.height >= 100);
+                        .filter(img => img.width >= MIN_DISPLAY_SIZE && img.height >= MIN_DISPLAY_SIZE);
                     newImages.push(...imgs);
                 }
             });
