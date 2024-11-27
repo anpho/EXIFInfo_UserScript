@@ -8,6 +8,8 @@
 // @grant        GM_addStyle
 // @grant        GM_xmlhttpRequest
 // @connect      *
+// @updateURL    https://github.com/anpho/EXIFInfo_UserScript/raw/refs/heads/main/exif-info.user.js
+// @downloadURL  https://github.com/anpho/EXIFInfo_UserScript/raw/refs/heads/main/exif-info.user.js
 // @require      https://cdn.jsdelivr.net/npm/exif-js@2.3.0
 // ==/UserScript==
 
